@@ -6,6 +6,25 @@ the sections between their current pin and an offered target to see what an
 upgrade brings. The format follows [Keep a Changelog](https://keepachangelog.com/)
 conventions, trimmed to what a content set needs.
 
+## v0.2.1 — 2026-09-03
+
+The recipient token learns the operator's mention sigil. The BROKKR Terminal's
+composer inserts agents as `@<slug>` mentions (0.2.10), and the daemon's resolver
+tolerates exactly one leading `@` on `to`; this release states that tolerance
+where an agent reads about addressing, so a session that receives `@jacob` knows
+it may pass it through and knows what it may not do with it. A deployment pinning
+this version needs a container whose resolver carries the tolerance — see
+`compat.json`.
+
+### Changed
+- `routed-comms` §2: a new paragraph on the leading `@` — `resolve_recipient` and
+  `deliver` strip one, `@@x` stays unknown, a mention is always the slug and never
+  the display name, and `publish_artefact.to` gets no such tolerance (address a
+  record with the canonical `to` the resolver returned). §3's `to` bullet points
+  at it.
+- `compat.json`: `min_container_version` is `0.2.10`, the first container whose
+  resolver strips the sigil.
+
 ## v0.2.0 — 2026-08-27
 
 The coordination doctrine moves the remote off the agent. A session holds no

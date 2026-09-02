@@ -164,6 +164,19 @@ the tools:
 Resolution is **project-scoped**: the daemon only ever resolves peers in your own
 project; a cross-project `to` is refused (`CROSS_PROJECT_REFUSED`).
 
+**A leading `@` on `to` is tolerated — exactly one.** The BROKKR Terminal's composer
+inserts an agent as an `@<slug>` mention, so an operator's line can hand you
+`@jacob`, and a routed body may quote a peer the same way. You need not strip the
+sigil before addressing the peer: `coordination.resolve_recipient` and
+`coordination.deliver` remove one leading `@` from `to` before folding it, so
+`@jacob` and `jacob` resolve to the same live session, while `@@jacob` stays
+`UNKNOWN_RECIPIENT` — the tolerance is a single character, not a normalisation. A
+mention is always the **slug**, never the agent's display name (humans see names in
+the composer; what lands in the text is the slug). `publish_artefact.to` carries no
+such tolerance: address a record with the canonical `to` that `resolve_recipient`
+returned, never the sigil form, or the record is stored under a token that matches
+no peer's slug.
+
 ## 3. The wake
 
 `coordination.deliver {to, body, class, expectReply?, inReplyTo?}` → `{id, status}`
@@ -171,9 +184,9 @@ is the doorbell. Publishing the record wakes no one; the `deliver` is what pulls
 idle recipient back to the artefact.
 
 - **`to`** MUST resolve to a **live (wake-ready)** recipient in your project → else
-  `UNKNOWN_RECIPIENT`. (Unlike `publish_artefact.to`, a `deliver` cannot target a
-  non-live discovery token — a wake with no one to wake is refused, not
-  dead-lettered.)
+  `UNKNOWN_RECIPIENT`; a single leading `@` is tolerated (§2). (Unlike
+  `publish_artefact.to`, a `deliver` cannot target a non-live discovery token — a
+  wake with no one to wake is refused, not dead-lettered.)
 - **`body`** carries the pointer — normally the `id` returned by `publish_artefact`
   plus a one-line summary (≤ 16 KiB; over → `BODY_TOO_LARGE`). The recipient reads
   the full record with `coordination.read_artefact {id}`.
