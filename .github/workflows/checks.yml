@@ -1,0 +1,67 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  content-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Every skill's frontmatter obeys the closed schema (name = directory,
+      # required description/assumes, optional boundary fields, no unknown or
+      # duplicate keys, NUL-safe). The selftest proves the checker still fails
+      # on each drift class before the real run is trusted.
+      - name: Frontmatter schema lint
+        run: |
+          bash scripts/check-frontmatter.sh --selftest
+          bash scripts/check-frontmatter.sh
+
+      # Skills must stay deployment-agnostic (no host bindings, no internal
+      # milestone tags, no bare literal endpoints — a loopback URL may appear
+      # only inside a ${...} deployment-override fallback). Read-only.
+      - name: Project-agnostic content check
+        run: |
+          bash scripts/check-project-agnostic.sh --selftest
+          bash scripts/check-project-agnostic.sh
+
+      # No private-deployment vocabulary anywhere in the tree. NUL-safe
+      # (reads raw bytes), covers every tracked file including itself. The
+      # patterns and their self-test probes come from organisation secrets;
+      # no banned term is written anywhere in this repository. Fork pull
+      # requests cannot read secrets, so that lane skips with a visible notice
+      # and maintainer review covers it.
+      - name: Vocabulary denylist gate
+        env:
+          DOCS_DENY_PATTERN: ${{ secrets.DOCS_DENY_PATTERN }}
+          DOCS_DENY_PATTERN_CS: ${{ secrets.DOCS_DENY_PATTERN_CS }}
+          DOCS_DENY_PROBE: ${{ secrets.DOCS_DENY_PROBE }}
+          DOCS_DENY_PROBE_CS: ${{ secrets.DOCS_DENY_PROBE_CS }}
+          DENYLIST_SKIP_SECRETS: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && '1' || '0' }}
+        run: python3 scripts/check-denylist.py
+
+      # No shipped skill teaches an agent-side remote-mutating VCS/forge
+      # command: agents call the daemon branch-publication and landing-request
+      # tools instead. Structural (the floor guard's rule table restated), so
+      # the carrier, global-option, continuation, Markdown-prefix, quoted-
+      # operand, nested shell and plain-prose variants cannot slip past. Zero
+      # findings anywhere is the acceptance; LOCAL branch deletion is not
+      # egress and is not a finding.
+      - name: Push-form absence gate
+        run: |
+          python3 scripts/check-push-forms.py --selftest
+          python3 scripts/check-push-forms.py
+
+      # The retired bridge MCP server prefix must never re-enter shipped
+      # content: the bridge is registered under exactly one server key, so a
+      # tool name built on the retired prefix resolves to nothing.
+      - name: Bridge-prefix absence gate
+        run: |
+          bash scripts/check-bridge-prefix.sh --selftest
+          bash scripts/check-bridge-prefix.sh
